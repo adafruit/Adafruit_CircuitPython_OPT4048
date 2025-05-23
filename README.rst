@@ -38,19 +38,10 @@ This is easily achieved by downloading
 or individual libraries can be installed using
 `circup <https://github.com/adafruit/circup>`_.
 
-
-
-.. todo:: Describe the Adafruit product this library works with. For PCBs, you can also add the
-image from the assets folder in the PCB's GitHub repo.
-
-`Purchase one from the Adafruit shop <http://www.adafruit.com/products/6335>`_
+`Adafruit OPT4048 Tri-Stimulus XYZ Color and Lux Sensor <http://www.adafruit.com/products/6335>`_
 
 Installing from PyPI
 =====================
-.. note:: This library is not available on PyPI yet. Install documentation is included
-   as a standard element. Stay tuned for PyPI availability!
-
-.. todo:: Remove the above note if PyPI version is/will be available at time of release.
 
 On supported GNU/Linux systems like the Raspberry Pi, you can install the driver locally `from
 PyPI <https://pypi.org/project/adafruit-circuitpython-opt4048/>`_.
@@ -101,8 +92,28 @@ Or the following command to update an existing version:
 Usage Example
 =============
 
-.. todo:: Add a quick, simple example. It and other examples should live in the
-examples folder and be included in docs/examples.rst.
+.. code-block:: python
+
+    import time
+    from time import sleep
+
+    import board
+
+    from adafruit_opt4048 import OPT4048, ConversionTime, Mode, Range
+
+    i2c = board.I2C()  # uses board.SCL and board.SDA
+    # i2c = board.STEMMA_I2C()  # For using the built-in STEMMA QT connector on a microcontroller
+    sensor = OPT4048(i2c)
+
+    sensor.range = Range.AUTO
+    sensor.conversion_time = ConversionTime.TIME_100MS
+    sensor.mode = Mode.CONTINUOUS
+    while True:
+        x, y, lux = sensor.get_cie()
+        print(f"CIE x:{x}, y:{y}, lux: {lux}", end=" ")
+        print(f"K: {sensor.calculate_color_temperature(x,y)}")
+        time.sleep(1)
+
 
 Documentation
 =============

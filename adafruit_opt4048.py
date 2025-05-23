@@ -22,8 +22,9 @@ Implementation Notes
 
 * Adafruit CircuitPython firmware for the supported boards:
   https://circuitpython.org/downloads
-# * Adafruit's Bus Device library: https://github.com/adafruit/Adafruit_CircuitPython_BusDevice
-# * Adafruit's Register library: https://github.com/adafruit/Adafruit_CircuitPython_Register
+* Adafruit's Bus Device library: https://github.com/adafruit/Adafruit_CircuitPython_BusDevice
+* Adafruit's Register library: https://github.com/adafruit/Adafruit_CircuitPython_Register
+
 """
 
 # imports
@@ -56,18 +57,6 @@ _OPT4048_CHIP_ID = const(0x0821)  # OPT4048 default device id
 class CV:
     """Constant value class helper for enums."""
 
-    # @classmethod
-    # def add_values(cls, value_tuples: Tuple[str, int, str, Optional[float]]) -> None:
-    #     """Add CV values to the class"""
-    #     cls.string = {}
-    #     cls.lsb = {}
-    #
-    #     for value_tuple in value_tuples:
-    #         name, value, string, lsb = value_tuple
-    #         setattr(cls, name, value)
-    #         cls.string[value] = string
-    #         cls.lsb[value] = lsb
-
     @classmethod
     def is_valid(cls, value: int) -> bool:
         """Validate that a given value is a member"""
@@ -78,6 +67,7 @@ class CV:
 
     @classmethod
     def get_name(cls, value) -> str:
+        """Get the name for a given value"""
         name_dict = {}
         for _key, _value in cls.__dict__.items():
             name_dict[_value] = _key
