@@ -1,5 +1,12 @@
 # SPDX-FileCopyrightText: Copyright (c) 2025 Tim C for Adafruit Industries
 # SPDX-License-Identifier: MIT
+"""
+A basic demo for using the OPT4048 tristimulus XYZ color sensor
+
+This example reads the sensor values from all four channels (X, Y, Z, W),
+demonstrates setting and getting threshold values, and displays the results.
+"""
+
 import time
 from time import sleep
 

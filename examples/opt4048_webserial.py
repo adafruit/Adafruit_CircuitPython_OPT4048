@@ -1,5 +1,16 @@
 # SPDX-FileCopyrightText: Copyright (c) 2025 Tim C for Adafruit Industries
 # SPDX-License-Identifier: MIT
+"""
+This example reads color data from the OPT4048 sensor and outputs it
+in a format suitable for displaying on a web page using Web Serial API.
+
+It continuously measures CIE x,y coordinates, lux, and color temperature.
+
+This example works with the web interface in the /webserial directory of the
+gh-pages branch of the Arduino driver repo: https://github.com/adafruit/Adafruit_OPT4048/tree/gh-pages,
+which can be accessed at: https://adafruit.github.io/Adafruit_OPT4048/webserial/
+"""
+
 import time
 from time import sleep
 
