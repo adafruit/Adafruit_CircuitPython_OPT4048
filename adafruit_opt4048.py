@@ -72,11 +72,16 @@ class CV:
     def is_valid(cls, value: int) -> bool:
         """Validate that a given value is a member"""
         IGNORE_LIST = [cls.__module__, cls.__name__]
-        print(IGNORE_LIST)
-        print(cls.__dict__.values())
         if value in cls.__dict__.values() and value not in IGNORE_LIST:
             return True
         return False
+
+    @classmethod
+    def get_name(cls, value) -> str:
+        name_dict = {}
+        for _key, _value in cls.__dict__.items():
+            name_dict[_value] = _key
+        return name_dict[value]
 
 
 class Range(CV):
@@ -252,10 +257,10 @@ _OPT4048_REG_STATUS = const(0x0C)  # Status register
 _OPT4048_REG_DEVICE_ID = const(0x11)  # Device ID register
 
 # Status register (0x0C) bit flags
-_OPT4048_FLAG_L = const(0x01)  # Flag low - measurement smaller than threshold
-_OPT4048_FLAG_H = const(0x02)  # Flag high - measurement larger than threshold
-_OPT4048_FLAG_CONVERSION_READY = const(0x04)  # Conversion ready
-_OPT4048_FLAG_OVERLOAD = const(0x08)  # Overflow condition
+OPT4048_FLAG_L = const(0x01)  # Flag low - measurement smaller than threshold
+OPT4048_FLAG_H = const(0x02)  # Flag high - measurement larger than threshold
+OPT4048_FLAG_CONVERSION_READY = const(0x04)  # Conversion ready
+OPT4048_FLAG_OVERLOAD = const(0x08)  # Overflow condition
 
 
 class OPT4048:
@@ -297,6 +302,9 @@ class OPT4048:
     _range = RWBits(4, _OPT4048_REG_CONFIG, 10, register_width=2, lsb_first=False)
     _conversion_time = RWBits(4, _OPT4048_REG_CONFIG, 6, register_width=2, lsb_first=False)
     _mode = RWBits(2, _OPT4048_REG_CONFIG, 4, register_width=2, lsb_first=False)
+    _quick_wake = RWBit(_OPT4048_REG_CONFIG, 15, register_width=2, lsb_first=False)
+    _fault_count = RWBits(2, _OPT4048_REG_CONFIG, 0, register_width=2, lsb_first=False)
+    _threshold_channel = RWBits(2, _OPT4048_REG_THRESHOLD_CFG, 5, register_width=2, lsb_first=False)
 
     # Threshold Low register bits (register 0x08)
     _threshold_low_exponent = RWBits(
@@ -305,9 +313,18 @@ class OPT4048:
     _threshold_low_mantissa = RWBits(
         12, _OPT4048_REG_THRESHOLD_LOW, 0, register_width=2, lsb_first=False
     )
+
+    # Threshold High register bits (register 0x09)
+    _threshold_high_exponent = RWBits(
+        4, _OPT4048_REG_THRESHOLD_HIGH, 12, register_width=2, lsb_first=False
+    )
+    _threshold_high_mantissa = RWBits(
+        12, _OPT4048_REG_THRESHOLD_HIGH, 0, register_width=2, lsb_first=False
+    )
     _all_channels_raw = RWBits(
         16 * 8, _OPT4048_REG_CH0_MSB, 0, register_width=2 * 8, lsb_first=False
     )
+    _flags = ROBits(4, _OPT4048_REG_STATUS, 0, register_width=2, lsb_first=False)
 
     def __init__(self, i2c_bus, address=_OPT4048_DEFAULT_ADDR):
         self.i2c_device = i2c_device.I2CDevice(i2c_bus, address)
@@ -496,6 +513,85 @@ class OPT4048:
             raise ValueError("Mode setting must be a valid Mode value")
         self._mode = value
 
+    @property
+    def quick_wake(self):
+        """Get the current state of the Quick Wake feature.
+
+        Quick Wake controls whether the sensor powers down completely in one-shot mode.
+        When enabled, the sensor doesn't power down all circuits in one-shot mode,
+        allowing faster wake-up from standby with a penalty in power consumption
+        compared to full standby mode.
+
+        Returns True if Quick Wake is enabled, False if disabled.
+        """
+        return self._quick_wake
+
+    @quick_wake.setter
+    def quick_wake(self, value):
+        """Enable or disable Quick Wake-up feature.
+
+        :param bool value: True to enable Quick Wake, False to disable.
+                          When enabled, the sensor doesn't power down completely
+                          in one-shot mode, allowing faster wake-up with higher
+                          power consumption.
+        """
+        self._quick_wake = value
+
+    @property
+    def fault_count(self):
+        """Get the current fault count setting.
+
+        Returns the current fault count setting from the FaultCount enum.
+        This controls how many consecutive measurements must be above/below
+        thresholds before an interrupt is triggered.
+
+        See the FaultCount class for valid values:
+        - FaultCount.COUNT_1: 1 fault count (default)
+        - FaultCount.COUNT_2: 2 consecutive faults
+        - FaultCount.COUNT_4: 4 consecutive faults
+        - FaultCount.COUNT_8: 8 consecutive faults
+        """
+        return self._fault_count
+
+    @fault_count.setter
+    def fault_count(self, value):
+        """Set the fault count for interrupt generation.
+
+        :param int value: The fault count setting to use from FaultCount enum.
+                          Controls how many consecutive measurements must be
+                          above/below thresholds before an interrupt is triggered.
+                          Must be a valid FaultCount value.
+        """
+        if not FaultCount.is_valid(value):
+            raise ValueError("Fault count setting must be a valid FaultCount value")
+        self._fault_count = value
+
+    @property
+    def threshold_channel(self):
+        """Get the channel currently used for threshold comparison.
+
+        Returns the channel number (0-3) currently used for threshold comparison:
+        - 0 = Channel 0 (X)
+        - 1 = Channel 1 (Y)
+        - 2 = Channel 2 (Z)
+        - 3 = Channel 3 (W)
+        """
+        return self._threshold_channel
+
+    @threshold_channel.setter
+    def threshold_channel(self, value):
+        """Set the channel to be used for threshold comparison.
+
+        :param int value: Channel number (0-3) to use for threshold comparison:
+                          0 = Channel 0 (X)
+                          1 = Channel 1 (Y)
+                          2 = Channel 2 (Z)
+                          3 = Channel 3 (W)
+        """
+        if not isinstance(value, int) or value < 0 or value > 3:
+            raise ValueError("Threshold channel must be an integer between 0 and 3")
+        self._threshold_channel = value
+
     def get_channels_raw(self):
         """Read all four channels, verify CRC, and return raw ADC code values.
 
@@ -636,6 +732,48 @@ class OPT4048:
         self._threshold_low_exponent = exponent
         self._threshold_low_mantissa = mantissa
 
+    @property
+    def threshold_high(self):
+        """Get the current high threshold value.
+
+        Returns the current high threshold value as a 32-bit integer.
+        This value determines when a high threshold interrupt is generated
+        when interrupt_direction is True.
+        """
+        # Read the exponent and mantissa from the threshold high register
+        exponent = self._threshold_high_exponent
+        mantissa = self._threshold_high_mantissa
+
+        # Calculate ADC code value by applying the exponent as a bit shift
+        # ADD 8 to the exponent as per datasheet equations 10-11
+        return mantissa << (8 + exponent)
+
+    @threshold_high.setter
+    def threshold_high(self, value):
+        """Set the high threshold value for interrupt generation.
+
+        :param int value: The high threshold value as a 32-bit integer
+        """
+        # Find the appropriate exponent and mantissa values that represent the threshold
+        exponent = 0
+        mantissa = value
+
+        # The mantissa needs to fit in 12 bits, so we start by shifting right
+        # to determine how many shifts we need (which gives us the exponent)
+        # Note that the threshold registers already have 8 added to exponent
+        # internally so we first subtract 8 from our target exponent
+        if mantissa > 0xFFF:  # If value won't fit in 12 bits
+            while mantissa > 0xFFF and exponent < 15:
+                mantissa >>= 1
+                exponent += 1
+            if mantissa > 0xFFF:  # If still won't fit with max exponent, clamp
+                mantissa = 0xFFF
+                exponent = 15 - 8  # Max exponent (15) minus the 8 that's added internally
+
+        # Write the exponent and mantissa to the register
+        self._threshold_high_exponent = exponent
+        self._threshold_high_mantissa = mantissa
+
     def get_cie(self):
         """Calculate CIE chromaticity coordinates and lux from raw sensor values.
 
@@ -718,3 +856,19 @@ class OPT4048:
         cct = (437.0 * n * n * n) + (3601.0 * n * n) + (6861.0 * n) + 5517.0
 
         return cct
+
+    @property
+    def flags(self):
+        """Get the current status flags.
+
+        Reads the status register (0x0C) to determine the current state of various
+        flags. Reading this register also clears latched interrupt flags.
+
+        :return: 8-bit value where:
+                 - bit 0 (0x01): FLAG_L - Flag low (measurement below threshold)
+                 - bit 1 (0x02): FLAG_H - Flag high (measurement above threshold)
+                 - bit 2 (0x04): CONVERSION_READY_FLAG - Conversion complete
+                 - bit 3 (0x08): OVERLOAD_FLAG - Overflow condition
+        :rtype: int
+        """
+        return self._flags
