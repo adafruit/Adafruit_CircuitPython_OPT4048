@@ -16,6 +16,15 @@ Output color data over serial for use with webserial page
     :caption: examples/opt4048_webserial.py
     :linenos:
 
+Interrupt Pin example
+---------------------
+
+Wait for the interrupt pin to be triggered, then read data.
+
+.. literalinclude:: ../examples/opt4048_interruptpin.py
+    :caption: examples/opt4048_interruptpin.py
+    :linenos:
+
 Full test
 ---------
 
