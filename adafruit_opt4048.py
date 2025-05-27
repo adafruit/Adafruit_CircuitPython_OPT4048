@@ -582,7 +582,92 @@ class OPT4048:
             raise ValueError("Threshold channel must be an integer between 0 and 3")
         self._threshold_channel = value
 
-    def get_channels_raw(self):
+    @property
+    def threshold_low(self):
+        """Get the current low threshold value.
+
+        Returns the current low threshold value as a 32-bit integer.
+        This value determines when a low threshold interrupt is generated
+        when interrupt_direction is False.
+        """
+        # Read the exponent and mantissa from the threshold low register
+        exponent = self._threshold_low_exponent
+        mantissa = self._threshold_low_mantissa
+        print(f"exponent: {exponent} mantissa: {mantissa}")
+        # Calculate ADC code value by applying the exponent as a bit shift
+        # ADD 8 to the exponent as per datasheet equations 12-13
+        return mantissa << (8 + exponent)
+
+    @threshold_low.setter
+    def threshold_low(self, value):
+        """Set the low threshold value for interrupt generation.
+
+        :param int value: The low threshold value as a 32-bit integer
+        """
+        # Find the appropriate exponent and mantissa values that represent the threshold
+        exponent = 0
+        mantissa = value
+
+        # The mantissa needs to fit in 12 bits, so we start by shifting right
+        # to determine how many shifts we need (which gives us the exponent)
+        # Note that the threshold registers already have 8 added to exponent
+        # internally so we first subtract 8 from our target exponent
+        if mantissa > 0xFFF:  # If value won't fit in 12 bits
+            while mantissa > 0xFFF and exponent < 15:
+                mantissa >>= 1
+                exponent += 1
+            if mantissa > 0xFFF:  # If still won't fit with max exponent, clamp
+                mantissa = 0xFFF
+                exponent = 15 - 8  # Max exponent (15) minus the 8 that's added internally
+
+        # Write the exponent and mantissa to the register
+        self._threshold_low_exponent = exponent
+        self._threshold_low_mantissa = mantissa
+
+    @property
+    def threshold_high(self):
+        """Get the current high threshold value.
+
+        Returns the current high threshold value as a 32-bit integer.
+        This value determines when a high threshold interrupt is generated
+        when interrupt_direction is True.
+        """
+        # Read the exponent and mantissa from the threshold high register
+        exponent = self._threshold_high_exponent
+        mantissa = self._threshold_high_mantissa
+
+        # Calculate ADC code value by applying the exponent as a bit shift
+        # ADD 8 to the exponent as per datasheet equations 10-11
+        return mantissa << (8 + exponent)
+
+    @threshold_high.setter
+    def threshold_high(self, value):
+        """Set the high threshold value for interrupt generation.
+
+        :param int value: The high threshold value as a 32-bit integer
+        """
+        # Find the appropriate exponent and mantissa values that represent the threshold
+        exponent = 0
+        mantissa = value
+
+        # The mantissa needs to fit in 12 bits, so we start by shifting right
+        # to determine how many shifts we need (which gives us the exponent)
+        # Note that the threshold registers already have 8 added to exponent
+        # internally so we first subtract 8 from our target exponent
+        if mantissa > 0xFFF:  # If value won't fit in 12 bits
+            while mantissa > 0xFFF and exponent < 15:
+                mantissa >>= 1
+                exponent += 1
+            if mantissa > 0xFFF:  # If still won't fit with max exponent, clamp
+                mantissa = 0xFFF
+                exponent = 15 - 8  # Max exponent (15) minus the 8 that's added internally
+
+        # Write the exponent and mantissa to the register
+        self._threshold_high_exponent = exponent
+        self._threshold_high_mantissa = mantissa
+
+    @property
+    def all_channels(self):
         """Read all four channels, verify CRC, and return raw ADC code values.
 
         Reads registers for channels 0-3 in one burst, checks the CRC bits for each,
@@ -681,90 +766,7 @@ class OPT4048:
         return tuple(channels)
 
     @property
-    def threshold_low(self):
-        """Get the current low threshold value.
-
-        Returns the current low threshold value as a 32-bit integer.
-        This value determines when a low threshold interrupt is generated
-        when interrupt_direction is False.
-        """
-        # Read the exponent and mantissa from the threshold low register
-        exponent = self._threshold_low_exponent
-        mantissa = self._threshold_low_mantissa
-        print(f"exponent: {exponent} mantissa: {mantissa}")
-        # Calculate ADC code value by applying the exponent as a bit shift
-        # ADD 8 to the exponent as per datasheet equations 12-13
-        return mantissa << (8 + exponent)
-
-    @threshold_low.setter
-    def threshold_low(self, value):
-        """Set the low threshold value for interrupt generation.
-
-        :param int value: The low threshold value as a 32-bit integer
-        """
-        # Find the appropriate exponent and mantissa values that represent the threshold
-        exponent = 0
-        mantissa = value
-
-        # The mantissa needs to fit in 12 bits, so we start by shifting right
-        # to determine how many shifts we need (which gives us the exponent)
-        # Note that the threshold registers already have 8 added to exponent
-        # internally so we first subtract 8 from our target exponent
-        if mantissa > 0xFFF:  # If value won't fit in 12 bits
-            while mantissa > 0xFFF and exponent < 15:
-                mantissa >>= 1
-                exponent += 1
-            if mantissa > 0xFFF:  # If still won't fit with max exponent, clamp
-                mantissa = 0xFFF
-                exponent = 15 - 8  # Max exponent (15) minus the 8 that's added internally
-
-        # Write the exponent and mantissa to the register
-        self._threshold_low_exponent = exponent
-        self._threshold_low_mantissa = mantissa
-
-    @property
-    def threshold_high(self):
-        """Get the current high threshold value.
-
-        Returns the current high threshold value as a 32-bit integer.
-        This value determines when a high threshold interrupt is generated
-        when interrupt_direction is True.
-        """
-        # Read the exponent and mantissa from the threshold high register
-        exponent = self._threshold_high_exponent
-        mantissa = self._threshold_high_mantissa
-
-        # Calculate ADC code value by applying the exponent as a bit shift
-        # ADD 8 to the exponent as per datasheet equations 10-11
-        return mantissa << (8 + exponent)
-
-    @threshold_high.setter
-    def threshold_high(self, value):
-        """Set the high threshold value for interrupt generation.
-
-        :param int value: The high threshold value as a 32-bit integer
-        """
-        # Find the appropriate exponent and mantissa values that represent the threshold
-        exponent = 0
-        mantissa = value
-
-        # The mantissa needs to fit in 12 bits, so we start by shifting right
-        # to determine how many shifts we need (which gives us the exponent)
-        # Note that the threshold registers already have 8 added to exponent
-        # internally so we first subtract 8 from our target exponent
-        if mantissa > 0xFFF:  # If value won't fit in 12 bits
-            while mantissa > 0xFFF and exponent < 15:
-                mantissa >>= 1
-                exponent += 1
-            if mantissa > 0xFFF:  # If still won't fit with max exponent, clamp
-                mantissa = 0xFFF
-                exponent = 15 - 8  # Max exponent (15) minus the 8 that's added internally
-
-        # Write the exponent and mantissa to the register
-        self._threshold_high_exponent = exponent
-        self._threshold_high_mantissa = mantissa
-
-    def get_cie(self):
+    def cie(self):
         """Calculate CIE chromaticity coordinates and lux from raw sensor values.
 
         Reads all four channels and calculates CIE x and y chromaticity coordinates
@@ -773,8 +775,8 @@ class OPT4048:
         :return: Tuple of CIE x, CIE y, and lux values
         :rtype: Tuple[float, float, float]
         """
-        # Read all four channels using get_channels_raw
-        ch0, ch1, ch2, ch3 = self.get_channels_raw()
+        # Read all four channels
+        ch0, ch1, ch2, ch3 = self.all_channels
 
         # Matrix multiplication coefficients (from datasheet)
         m0x = 2.34892992e-04

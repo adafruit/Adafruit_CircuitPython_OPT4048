@@ -33,7 +33,7 @@ while True:
     if sensor.mode == Mode.POWERDOWN:
         # ok we finished the reading!
         try:
-            CIEx, CIEy, lux = sensor.get_cie()
+            CIEx, CIEy, lux = sensor.cie
         except RuntimeError:
             print("Error reading sensor data")
 
