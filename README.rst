@@ -109,7 +109,7 @@ Usage Example
     sensor.conversion_time = ConversionTime.TIME_100MS
     sensor.mode = Mode.CONTINUOUS
     while True:
-        x, y, lux = sensor.get_cie()
+        x, y, lux = sensor.cie
         print(f"CIE x:{x}, y:{y}, lux: {lux}", end=" ")
         print(f"K: {sensor.calculate_color_temperature(x,y)}")
         time.sleep(1)

@@ -36,7 +36,7 @@ while True:
     try:
         if pin_counter.count > 0:
             pin_counter.reset()
-            x, y, lux = sensor.get_cie()
+            x, y, lux = sensor.cie
             print(f"CIE x:{x}, y:{y}, lux: {lux}", end=" ")
             print(f"K: {sensor.calculate_color_temperature(x, y)}", end=" ")
             print(f"Read Delay: {time.monotonic() - last_read_time} sec")

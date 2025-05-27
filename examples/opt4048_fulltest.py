@@ -120,7 +120,7 @@ print(
 while True:
     try:
         # Read all four channels from the sensor (raw ADC values)
-        x, y, z, w = sensor.get_channels_raw()
+        x, y, z, w = sensor.all_channels
 
         print("Channel readings (raw values):")
         print(f"X (CH0): {x}")
@@ -129,7 +129,7 @@ while True:
         print(f"W (CH3): {w}")
 
         # Calculate and display CIE chromaticity coordinates and lux
-        CIEx, CIEy, lux = sensor.get_cie()
+        CIEx, CIEy, lux = sensor.cie
         print("\nCIE Coordinates:")
         print(f"CIE x: {CIEx}")
         print(f"CIE y: {CIEy}")

@@ -32,7 +32,7 @@ last_read_time = 0
 while True:
     if time.monotonic() > last_read_time + READ_INTERVAL:
         last_read_time = time.monotonic()
-        x, y, lux = sensor.get_cie()
+        x, y, lux = sensor.cie
         print("---CIE Data---")
         print(f"CIE x: {x}")
         print(f"CIE y: {y}")
