@@ -34,16 +34,16 @@ while True:
         # ok we finished the reading!
         try:
             CIEx, CIEy, lux = sensor.cie
+
+            print("\nCIE Coordinates:")
+            print(f"CIE x:{CIEx}, y:{CIEy}, lux: {lux}", end=" ")
+
+            # Calculate and display color temperature
+            color_temp = sensor.calculate_color_temperature(CIEx, CIEy)
+            print(f"Color Temperature: {color_temp} K")
+            print(f"Time since last read: {time.monotonic() - timestamp} sec")
+            timestamp = time.monotonic()
         except RuntimeError:
             print("Error reading sensor data")
-
-        print("\nCIE Coordinates:")
-        print(f"CIE x:{CIEx}, y:{CIEy}, lux: {lux}", end=" ")
-
-        # Calculate and display color temperature
-        color_temp = sensor.calculate_color_temperature(CIEx, CIEy)
-        print(f"Color Temperature: {color_temp} K")
-        print(f"Time since last read: {time.monotonic() - timestamp} sec")
-        timestamp = time.monotonic()
 
         sensor.mode = Mode.AUTO_ONESHOT
