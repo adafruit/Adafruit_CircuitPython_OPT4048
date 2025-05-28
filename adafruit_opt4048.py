@@ -323,7 +323,6 @@ class OPT4048:
     def init(self):
         """Initialize the sensor and verify the device ID"""
         # Check device ID
-        print(f"id: {hex(self._device_id)}")
         if self._device_id != _OPT4048_CHIP_ID:
             raise RuntimeError("Failed to find an OPT4048 sensor - check your wiring!")
 
@@ -593,7 +592,6 @@ class OPT4048:
         # Read the exponent and mantissa from the threshold low register
         exponent = self._threshold_low_exponent
         mantissa = self._threshold_low_mantissa
-        print(f"exponent: {exponent} mantissa: {mantissa}")
         # Calculate ADC code value by applying the exponent as a bit shift
         # ADD 8 to the exponent as per datasheet equations 12-13
         return mantissa << (8 + exponent)
@@ -697,7 +695,6 @@ class OPT4048:
 
             # Combine MSB and LSB to form the 20-bit mantissa
             mant = (msb << 8) | lsb
-            # print(f"ch: {ch} exp: {exp} msb: {msb} lsb: {lsb} counter: {counter} crc: {crc} mant: {mant}")  # noqa: E501
             # Calculate CRC
             # Initialize CRC variables
             x0 = 0  # CRC bit 0
