@@ -22,7 +22,11 @@ sensor.range = Range.AUTO
 sensor.conversion_time = ConversionTime.TIME_100MS
 sensor.mode = Mode.CONTINUOUS
 while True:
-    x, y, lux = sensor.cie
-    print(f"CIE x:{x}, y:{y}, lux: {lux}", end=" ")
-    print(f"K: {sensor.calculate_color_temperature(x,y)}")
-    time.sleep(1)
+    try:
+        x, y, lux = sensor.cie
+        print(f"CIE x:{x}, y:{y}, lux: {lux}", end=" ")
+        print(f"K: {sensor.calculate_color_temperature(x,y)}")
+        time.sleep(1)
+    except RuntimeError:
+        # CRC check failed while reading data
+        pass
