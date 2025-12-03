@@ -253,7 +253,7 @@ OPT4048_FLAG_CONVERSION_READY = const(0x04)  # Conversion ready
 OPT4048_FLAG_OVERLOAD = const(0x08)  # Overflow condition
 
 
-class OPT4048:
+class OPT4048:  # noqa: PLR0904, too many public methods
     """Library for the OPT4048 Tristimulus XYZ Color Sensor
 
     :param ~busio.I2C i2c_bus: The I2C bus the device is connected to
@@ -761,11 +761,11 @@ class OPT4048:
 
         # Return all four channels (X, Y, Z, W)
         return tuple(channels)
-    
+
     @property
     def xyz(self):
         """Calculate CIE XYZ tristimulus values from raw sensor channels.
-    
+
         Uses the 3 channel of OPT4048 outputs and applies the transformation
         matrix from the datasheet.
 
@@ -787,12 +787,11 @@ class OPT4048:
         m2x = 9.28619404e-05
         m2y = -1.69739553e-05
         m2z = 6.74021520e-04
-        
+
         m3x = 0
         m3y = 0
         m3z = 0
-        m3l = 0
-        
+
         # Matrix multiplication to calculate X, Y, Z, L values
         # [ch0 ch1 ch2 ch3] * [m0x m0y m0z m0l] = [X Y Z Lux]
         #                     [m1x m1y m1z m1l]
@@ -813,16 +812,17 @@ class OPT4048:
         CIE values are calculated from the x, y, z value from the xyz() function.
         LUX value estimated using the OPT4048 raw values together transformation
         matrix from the datasheet.
-        
+
         :return: Tuple (cie_x, cie_y, lux)
         :rtype: Tuple[float, float, float]
         """
-        
-        ch0, ch1, ch2, ch3 = self.all_channels  # for lux calculation
-        
+
+        # for lux calculation
+        ch0, ch1, ch2, ch3 = self.all_channels  # noqa: F841, local var not used
+
         # Calculate lux
-        lux = ch1 *  2.15e-03
-    
+        lux = ch1 * 2.15e-03
+
         x, y, z = self.xyz
 
         # Calculate CIE x, y chromaticity coordinates
@@ -831,7 +831,7 @@ class OPT4048:
         x = max(0.0, x)
         y = max(0.0, y)
         z = max(0.0, z)
-        
+
         if sum_xyz <= 0:
             # Avoid division by zero
             return 0.0, 0.0, 0.0
@@ -840,25 +840,24 @@ class OPT4048:
         cie_y = y / sum_xyz
 
         return cie_x, cie_y, lux
-    
+
     @property
     def normalizedtosum(self):
         """Normalize XYZ values so their sum becomes 1.0.
 
         This removes brightness influence and keeps the values in a valid range.
-    
+
         :return: Tuple (Xn, Yn, Zn)
         :rtype: Tuple[float, float, float]
         """
         X, Y, Z = self.xyz
-            
+
         # Clamp negatives or very small to avoid invalid normalization
         X = 0 if X < 0.5 else X
         Y = 0 if Y < 0.3 else Y
         Z = 0 if Z < 0.3 else Z
 
         SUM = X + Y + Z
-    
 
         if SUM == 0:
             # Avoid division by zero → return (0,0,0) or some fallback
@@ -872,32 +871,31 @@ class OPT4048:
         Xn = min(Xn, 1.0)
         Yn = min(Yn, 1.0)
         Zn = min(Zn, 1.0)
-    
+
         return (Xn, Yn, Zn)
-    
-    
+
     @property
     def rgb(self):
         """convert xyz value to rgb and return illuminance (lux) value.
 
         Based on the XYZ normalized value from normalizedtosum().
-        reference: https://www.oceanopticsbook.info/view/photometry-and-visibility/from-xyz-to-rgb 
-    
+        reference: https://www.oceanopticsbook.info/view/photometry-and-visibility/from-xyz-to-rgb
+
         :return: Tuple (r, g, b, lux)
         :rtype: Tuple[int, int, int, float]
         """
-        
+
         x, y, z = self.normalizedtosum
-        
-        # Get lux value 
+
+        # Get lux value
         _, _, lux = self.cie
-        
+
         # Convert normalized XYZ to RGB
 
         # Convert XYZ to linear RGB (sRGB)
-        r_lin =  3.2404542 * x - 1.5371385 * y - 0.4985314 * z
+        r_lin = 3.2404542 * x - 1.5371385 * y - 0.4985314 * z
         g_lin = -0.9692660 * x + 1.8760108 * y + 0.0415560 * z
-        b_lin =  0.0556434 * x - 0.2040259 * y + 1.0572252 * z
+        b_lin = 0.0556434 * x - 0.2040259 * y + 1.0572252 * z
 
         # Clamp negatives (no negative light)
         r_lin = max(0.0, r_lin)
@@ -909,7 +907,7 @@ class OPT4048:
             if c <= 0.0031308:
                 return 12.92 * c
             else:
-                return 1.055 * (c ** (1/2.4)) - 0.055
+                return 1.055 * (c ** (1 / 2.4)) - 0.055
 
         r = gamma_correct(r_lin)
         g = gamma_correct(g_lin)
@@ -966,4 +964,3 @@ class OPT4048:
         :rtype: int
         """
         return self._flags
-
