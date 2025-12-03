@@ -253,7 +253,7 @@ OPT4048_FLAG_CONVERSION_READY = const(0x04)  # Conversion ready
 OPT4048_FLAG_OVERLOAD = const(0x08)  # Overflow condition
 
 
-class OPT4048:
+class OPT4048:  # noqa: PLR0904, too many public methods
     """Library for the OPT4048 Tristimulus XYZ Color Sensor
 
     :param ~busio.I2C i2c_bus: The I2C bus the device is connected to
@@ -763,13 +763,13 @@ class OPT4048:
         return tuple(channels)
 
     @property
-    def cie(self):
-        """Calculate CIE chromaticity coordinates and lux from raw sensor values.
+    def xyz(self):
+        """Calculate CIE XYZ tristimulus values from raw sensor channels.
 
-        Reads all four channels and calculates CIE x and y chromaticity coordinates
-        and illuminance (lux) using a matrix transformation.
+        Uses the 3 channel of OPT4048 outputs and applies the transformation
+        matrix from the datasheet.
 
-        :return: Tuple of CIE x, CIE y, and lux values
+        :return: Tuple of (X, Y, Z) tristimulus values
         :rtype: Tuple[float, float, float]
         """
         # Read all four channels
@@ -779,35 +779,59 @@ class OPT4048:
         m0x = 2.34892992e-04
         m0y = -1.89652390e-05
         m0z = 1.20811684e-05
-        m0l = 0
 
         m1x = 4.07467441e-05
         m1y = 1.98958202e-04
         m1z = -1.58848115e-05
-        m1l = 2.15e-3
 
         m2x = 9.28619404e-05
         m2y = -1.69739553e-05
         m2z = 6.74021520e-04
-        m2l = 0
 
         m3x = 0
         m3y = 0
         m3z = 0
-        m3l = 0
 
         # Matrix multiplication to calculate X, Y, Z, L values
         # [ch0 ch1 ch2 ch3] * [m0x m0y m0z m0l] = [X Y Z Lux]
         #                     [m1x m1y m1z m1l]
         #                     [m2x m2y m2z m2l]
         #                     [m3x m3y m3z m3l]
+
+        # Matrix multiplication for XYZ
         x = ch0 * m0x + ch1 * m1x + ch2 * m2x + ch3 * m3x
         y = ch0 * m0y + ch1 * m1y + ch2 * m2y + ch3 * m3y
         z = ch0 * m0z + ch1 * m1z + ch2 * m2z + ch3 * m3z
-        lux = ch0 * m0l + ch1 * m1l + ch2 * m2l + ch3 * m3l
+
+        return x, y, z
+
+    @property
+    def cie(self):
+        """Calculate CIE chromaticity (x, y) and LUX.
+
+        CIE values are calculated from the x, y, z value from the xyz() function.
+        LUX value estimated using the OPT4048 raw values together transformation
+        matrix from the datasheet.
+
+        :return: Tuple (cie_x, cie_y, lux)
+        :rtype: Tuple[float, float, float]
+        """
+
+        # for lux calculation
+        ch0, ch1, ch2, ch3 = self.all_channels  # noqa: F841, local var not used
+
+        # Calculate lux
+        lux = ch1 * 2.15e-03
+
+        x, y, z = self.xyz
 
         # Calculate CIE x, y chromaticity coordinates
         sum_xyz = x + y + z
+        # ---- Clamp negatives (no negative light) ----
+        x = max(0.0, x)
+        y = max(0.0, y)
+        z = max(0.0, z)
+
         if sum_xyz <= 0:
             # Avoid division by zero
             return 0.0, 0.0, 0.0
@@ -816,6 +840,85 @@ class OPT4048:
         cie_y = y / sum_xyz
 
         return cie_x, cie_y, lux
+
+    @property
+    def normalized_xyz(self):
+        """Normalize XYZ values so their sum becomes 1.0.
+
+        This removes brightness influence and keeps the values in a valid range.
+
+        :return: Tuple (Xn, Yn, Zn)
+        :rtype: Tuple[float, float, float]
+        """
+        X, Y, Z = self.xyz
+
+        # Clamp negatives or very small to avoid invalid normalization
+        X = 0 if X < 0.5 else X
+        Y = 0 if Y < 0.3 else Y
+        Z = 0 if Z < 0.3 else Z
+
+        SUM = X + Y + Z
+
+        if SUM == 0:
+            # Avoid division by zero → return (0,0,0) or some fallback
+            return (0.0, 0.0, 0.0)
+
+        Xn = X / SUM
+        Yn = Y / SUM
+        Zn = Z / SUM
+
+        # Clamp each to max 1.0
+        Xn = min(Xn, 1.0)
+        Yn = min(Yn, 1.0)
+        Zn = min(Zn, 1.0)
+
+        return (Xn, Yn, Zn)
+
+    @property
+    def rgb(self):
+        """convert xyz value to rgb and return illuminance (lux) value.
+
+        Based on the XYZ normalized value from normalizedtosum().
+        reference: https://www.oceanopticsbook.info/view/photometry-and-visibility/from-xyz-to-rgb
+
+        :return: Tuple (r, g, b, lux)
+        :rtype: Tuple[int, int, int, float]
+        """
+
+        x, y, z = self.normalized_xyz
+
+        # Get lux value
+        _, _, lux = self.cie
+
+        # Convert normalized XYZ to RGB
+
+        # Convert XYZ to linear RGB (sRGB)
+        r_lin = 3.2404542 * x - 1.5371385 * y - 0.4985314 * z
+        g_lin = -0.9692660 * x + 1.8760108 * y + 0.0415560 * z
+        b_lin = 0.0556434 * x - 0.2040259 * y + 1.0572252 * z
+
+        # Clamp negatives (no negative light)
+        r_lin = max(0.0, r_lin)
+        g_lin = max(0.0, g_lin)
+        b_lin = max(0.0, b_lin)
+
+        # Gamma correction (sRGB standard)
+        def gamma_correct(c):
+            if c <= 0.0031308:
+                return 12.92 * c
+            else:
+                return 1.055 * (c ** (1 / 2.4)) - 0.055
+
+        r = gamma_correct(r_lin)
+        g = gamma_correct(g_lin)
+        b = gamma_correct(b_lin)
+
+        # Scale to 0–255 and clamp
+        r = int(min(max(r * 255, 0), 255))
+        g = int(min(max(g * 255, 0), 255))
+        b = int(min(max(b * 255, 0), 255))
+
+        return r, g, b, lux
 
     def calculate_color_temperature(self, cie_x, cie_y):
         """Calculate the correlated color temperature (CCT) in Kelvin.
