@@ -842,7 +842,7 @@ class OPT4048:  # noqa: PLR0904, too many public methods
         return cie_x, cie_y, lux
 
     @property
-    def normalizedtosum(self):
+    def normalized_xyz(self):
         """Normalize XYZ values so their sum becomes 1.0.
 
         This removes brightness influence and keeps the values in a valid range.
@@ -885,7 +885,7 @@ class OPT4048:  # noqa: PLR0904, too many public methods
         :rtype: Tuple[int, int, int, float]
         """
 
-        x, y, z = self.normalizedtosum
+        x, y, z = self.normalized_xyz
 
         # Get lux value
         _, _, lux = self.cie
