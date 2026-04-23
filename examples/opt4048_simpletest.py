@@ -25,7 +25,7 @@ while True:
     try:
         x, y, lux = sensor.cie
         print(f"CIE x:{x}, y:{y}, lux: {lux}", end=" ")
-        print(f"K: {sensor.calculate_color_temperature(x,y)}")
+        print(f"K: {sensor.calculate_color_temperature(x, y)}")
         time.sleep(1)
     except RuntimeError:
         # CRC check failed while reading data
